@@ -1,0 +1,9 @@
+apiVersion: 1
+
+dashboards:
+  - name: "genai-health"
+    orgId: 1
+    folder: "GenAI Health"
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
