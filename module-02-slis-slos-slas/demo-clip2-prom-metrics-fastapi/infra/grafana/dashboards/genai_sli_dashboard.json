@@ -1,0 +1,88 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "End-to-end P95 latency (s)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(genai_request_latency_seconds_bucket[2m])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Model P99 latency (s)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(genai_dependency_latency_seconds_bucket{dependency=\"model\"}[2m])))",
+          "legendFormat": "model p99"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Errors by dependency/type (rate)",
+      "targets": [
+        {
+          "expr": "sum by (dependency, error_type) (rate(genai_dependency_errors_total[2m]))",
+          "legendFormat": "{{dependency}} {{error_type}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg cost per request ($)",
+      "targets": [
+        {
+          "expr": "rate(genai_cost_per_request_dollars_sum[2m]) / rate(genai_cost_per_request_dollars_count[2m])",
+          "legendFormat": "cost/request"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "genai",
+    "sli"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "GenAI SLIs (Latency, Errors, Cost)",
+  "version": 1
+}
