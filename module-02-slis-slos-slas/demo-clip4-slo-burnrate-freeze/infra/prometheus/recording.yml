@@ -1,0 +1,53 @@
+groups:
+- name: slo_recording
+  interval: 2s
+  rules:
+  # ── Good-request rates ──────────────────────────────────────────────────────
+  # clamp_min on the denominator prevents NaN at startup when no traffic exists yet
+  - record: slo:good_rate_5m
+    expr: >
+      clamp(
+        sum(rate(genai_requests_total{outcome="success"}[5m]))
+        / clamp_min(sum(rate(genai_requests_total[5m])), 0.0001),
+        0, 1
+      )
+  - record: slo:good_rate_1h
+    expr: >
+      clamp(
+        sum(rate(genai_requests_total{outcome="success"}[1h]))
+        / clamp_min(sum(rate(genai_requests_total[1h])), 0.0001),
+        0, 1
+      )
+  - record: slo:good_rate_30m
+    expr: >
+      clamp(
+        sum(rate(genai_requests_total{outcome="success"}[30m]))
+        / clamp_min(sum(rate(genai_requests_total[30m])), 0.0001),
+        0, 1
+      )
+  - record: slo:good_rate_6h
+    expr: >
+      clamp(
+        sum(rate(genai_requests_total{outcome="success"}[6h]))
+        / clamp_min(sum(rate(genai_requests_total[6h])), 0.0001),
+        0, 1
+      )
+
+  # ── Burn rates: error_rate / error_budget  (SLO=99.9% → budget=0.001) ───────
+  # burn rate 1.0 = spending budget at exactly the allowed rate
+  # burn rate 14.4 = fast-burn page threshold
+  - record: slo:burnrate_5m
+    expr: clamp_min((1 - slo:good_rate_5m) / 0.001, 0)
+  - record: slo:burnrate_1h
+    expr: clamp_min((1 - slo:good_rate_1h) / 0.001, 0)
+  - record: slo:burnrate_30m
+    expr: clamp_min((1 - slo:good_rate_30m) / 0.001, 0)
+  - record: slo:burnrate_6h
+    expr: clamp_min((1 - slo:good_rate_6h) / 0.001, 0)
+
+  # ── Error budget remaining (standard SRE definition) ─────────────────────────
+  # 1.0 = 100% budget intact (burn rate 0)
+  # 0.0 = budget exhausted (burn rate >= 1.0 sustained over the 30m window)
+  # Uses 30m window as the "demo window" — visible within a short recording
+  - record: slo:error_budget_remaining_demo
+    expr: clamp_min(1 - slo:burnrate_30m, 0)

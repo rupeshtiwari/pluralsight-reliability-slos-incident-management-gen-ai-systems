@@ -1,0 +1,26 @@
+groups:
+- name: slo_alerts
+  rules:
+  - alert: SLOFastBurnPage
+    expr: (slo:burnrate_5m > 14.4) and (slo:burnrate_1h > 14.4)
+    for: 1m
+    labels:
+      severity: page
+      service: genai-slo-demo
+      slo: good-requests
+    annotations:
+      summary: Fast burn error budget burning too quickly
+      description: Multi-window burn rate exceeds 14.4x treat as page level
+      runbook_url: https://pluralsight.example/runbooks/genai-slo-fastburn
+
+  - alert: SLOSlowBurnTicket
+    expr: (slo:burnrate_30m > 2) and (slo:burnrate_6h > 2)
+    for: 15m
+    labels:
+      severity: ticket
+      service: genai-slo-demo
+      slo: good-requests
+    annotations:
+      summary: Slow burn quiet budget drain
+      description: Multi-window burn rate exceeds 2x create a ticket
+      runbook_url: https://pluralsight.example/runbooks/genai-slo-slowburn
