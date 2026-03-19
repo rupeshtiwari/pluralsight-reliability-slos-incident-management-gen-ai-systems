@@ -1,0 +1,57 @@
+groups:
+  - name: genai-slo-alerts
+    rules:
+      # ── Fast burn: error budget consumed 14x faster than baseline ──
+      # Google SRE Chapter 6: 14.4x over 1h = fast burn.
+      # Demo uses 1m window + 15s for. Production: 1h window + 5m for.
+      - alert: SLOBurnRateCritical
+        expr: |
+          (
+            rate(genai_requests_total{status="error"}[1m])
+            /
+            rate(genai_requests_total[1m])
+          ) > (14 * 0.001)
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error budget burning 14x faster than baseline"
+          runbook_url: "https://runbooks.internal/genai/slo-burn-rate"
+          owner: "platform-team"
+
+      # ── Slow burn: gradual drift consuming budget 2x faster ──
+      # Demo uses 1m window + 15s for. Production: 6h window + 5m for.
+      - alert: SLOBurnRateWarning
+        expr: |
+          (
+            rate(genai_requests_total{status="error"}[1m])
+            /
+            rate(genai_requests_total[1m])
+          ) > (2 * 0.001)
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error budget burning 2x faster than baseline — slow burn"
+          runbook_url: "https://runbooks.internal/genai/slo-burn-rate"
+          owner: "platform-team"
+
+  - name: genai-dependency-alerts
+    rules:
+      # ── Dependency fully down: zero successful responses ──
+      # Uses on(dep) so the 'and' matches only on dep label, not result.
+      # Without on(dep), the result="success" label makes both sides match
+      # on the same zero-rate series and the > 0 condition always fails.
+      # Demo uses 30s window + 10s for. Production: 5m window + 2m for.
+      - alert: DependencyDown
+        expr: |
+          rate(genai_dependency_calls_total{result="success"}[30s]) == 0
+          and on(dep)
+          sum by(dep) (rate(genai_dependency_calls_total[30s])) > 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.dep }} returning zero successful responses"
+          runbook_url: "https://runbooks.internal/genai/dependency-down"
+          owner: "platform-team"
