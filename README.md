@@ -4,15 +4,21 @@ This repository contains the hands-on demos for the Pluralsight course:
 
 **Reliability, SLOs, and Incident Management for GenAI Systems**
 
+---
+
 ## What you will learn
 
-By running these demos, you will learn how to operate GenAI systems with an SRE mindset:
+By running these demos you will learn how to operate GenAI systems with an SRE mindset:
 
-* Define service health beyond HTTP 200
-* Use liveness and readiness checks correctly
-* Detect soft failures such as quality collapse, retrieval drift, and throttling
-* Validate failures with traces and metrics
-* Use synthetic probes to verify end-to-end behavior
+- Define service health beyond HTTP 200
+- Instrument GenAI SLIs with Prometheus and FastAPI
+- Build SLO compliance dashboards with burn-rate alerts and feature freeze triggers
+- Implement timeouts, retries with exponential backoff, and circuit breakers
+- Run chaos experiments with Toxiproxy and Redis fallbacks
+- Build alerting and escalation pipelines with Alertmanager
+- Conduct blameless postmortems and track MTTR and reliability backlogs
+
+---
 
 ## Repository structure
 
@@ -22,41 +28,31 @@ By running these demos, you will learn how to operate GenAI systems with an SRE 
 ├── course_setup/
 │   ├── README.md
 │   └── setup_all.sh
+├── demos/
+│   └── README.md                          ← course-wide demo index
 ├── module-01-production-reliability-fundamentals/
-│   ├── README.md
-│   ├── setup_module.sh
 │   └── demo-clip4-otel-health-probes/
-│       ├── README.md
-│       ├── app/
-│       ├── infra/
-│       └── scripts/
-└── demos/
-    └── README.md
+├── module-02-slis-slos-slas/
+│   ├── demo-clip2-prom-metrics-fastapi/
+│   └── demo-clip4-slo-burnrate-freeze/
+├── module-03-failure-handling-resilience/
+│   ├── demo-clip2-retries-circuit-breakers/
+│   └── demo-clip4-chaos-toxiproxy-redis-fallbacks/
+└── module-04-incident-response-operational-excellence/
+    ├── demo-clip2-alerting-escalation-alertmanager/
+    └── demo-clip4-blameless-postmortems-mttr-backlog/
 ```
 
-## Where to start
-
-1. Run the course-level setup to install prerequisites
-2. Open the module you want to work on
-3. Run the demo scripts inside that demo folder
+---
 
 ## Requirements
 
-These instructions assume:
+- macOS
+- Docker Desktop
+- Python 3.9 or higher
+- Git, curl, jq
 
-* You are using macOS
-* You are starting on a machine with no required tools installed
-
-The course setup installs:
-
-* Homebrew
-* Python 3
-* Docker Desktop
-* Git
-* curl
-* jq
-
-After installation, open Docker Desktop once and wait until it shows that Docker is running.
+---
 
 ## One-time setup
 
@@ -66,114 +62,99 @@ From the repository root:
 ./course_setup/setup_all.sh
 ```
 
-Then start Docker Desktop if needed:
+Start Docker Desktop and verify:
 
 ```bash
 open -a Docker
-```
-
-Wait until Docker is running, then verify:
-
-```bash
 docker version
 docker compose version
 ```
 
-## Run your first demo
+---
 
-This example uses Module 1, Clip 4.
+## How to run any demo
 
-### Start the demo
+Every demo follows the same three-step pattern:
+
+### Step 1 — Pre-flight check
+
+Run this before every session. It verifies Docker, ports, services, and the dashboard — and opens an HTML report with fix instructions for anything that fails.
 
 ```bash
-cd module-01-production-reliability-fundamentals/demo-clip4-otel-health-probes
+./scripts/preflight_check.sh
+```
+
+All checks must pass before you proceed.
+
+### Step 2 — Start and run
+
+```bash
 ./scripts/demo_up.sh
-```
-
-### Open the UI
-
-```bash
-./scripts/open_ui.sh
-```
-
-Expected:
-
-* Grafana: [http://localhost:3000](http://localhost:3000)
-
-### Run the scenario
-
-```bash
 ./scripts/run_story.sh
 ```
 
-This demo includes:
-
-* `/live` for liveness
-* `/ready` for readiness and dependency gating
-* `/probe/deep` for deeper synthetic validation
-* OpenTelemetry traces and Prometheus metrics
-* Grafana and Tempo for observability
-
-Expected behavior:
-
-* `/live` remains healthy even if a downstream dependency fails
-* `/ready` returns `ok` or `degraded` and identifies the failing boundary
-* `/probe/deep` fails with a clear boundary and reason
-* Grafana shows probe success and failure
-* Tempo traces show the failing dependency span
-
-### Shut down
+### Step 3 — Stop
 
 ```bash
 ./scripts/demo_down.sh
 ```
 
+See `demos/README.md` for the full index of all demos with paths, LOs, and port references.
+
+---
+
+## Demo index
+
+| Module | Clip | Demo | LO |
+|--------|------|------|----|
+| 1 | 4 | OpenTelemetry Health Checks and Synthetic Probes | 1c |
+| 2 | 2 | Instrument GenAI SLIs with Prometheus and FastAPI | 2a |
+| 2 | 4 | SLO Dashboards, Burn-Rate Alerts, and Feature Freeze Triggers | 2d |
+| 3 | 2 | Retries and Circuit Breakers with HTTPX | 3a |
+| 3 | 4 | Chaos Testing with Toxiproxy, Redis, and Fallbacks | 3b, 3c, 3d |
+| 4 | 2 | Alerting and Escalation with Prometheus Alertmanager | 4b |
+| 4 | 4 | Blameless Postmortems, MTTR Metrics, and Reliability Backlogs | 5a, 5b, 5c |
+
+---
+
 ## Troubleshooting
 
-### Docker commands fail
+### Docker not responding
 
-Make sure Docker Desktop is running:
+Hard restart Docker Desktop on Mac:
 
 ```bash
+killall Docker\ Desktop 2>/dev/null; killall com.docker.backend 2>/dev/null
+sleep 5
 open -a Docker
-docker version
 ```
 
-### App does not become ready
-
-Check the application log:
+Wait for the whale icon to stop animating, then:
 
 ```bash
-tail -n 80 .run/app.log
+docker context use default
+docker info | grep "Server Version"
 ```
 
 ### Port already in use
 
-Common ports used by the demo:
-
-* 8080 for the app
-* 3000 for Grafana
-* 9090 for Prometheus
-* 3200 for Tempo
-
-Check what is using a port:
+Find and kill the process holding the port:
 
 ```bash
-lsof -nP -iTCP:3000 | grep LISTEN
+lsof -nP -iTCP:<PORT> -sTCP:LISTEN
+kill -9 <PID>
 ```
+
+### App does not start
+
+Check the application log:
+
+```bash
+tail -n 50 .run/app.log
+```
+
+---
 
 ## Safety notes
 
-These demos run locally using Docker and local Python processes.
-
-No AWS resources are created by default.
-
-## Next steps
-
-Each module folder contains:
-
-* `README.md` for module overview and prerequisites
-* `setup_module.sh` for module-specific setup
-* Demo folders with their own `README.md` and scripts
-
-Start
+All demos run locally using Docker and local Python processes. No cloud resources are created. No API keys are required.
