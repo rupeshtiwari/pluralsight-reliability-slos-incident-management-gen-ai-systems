@@ -1,0 +1,70 @@
+# =============================================================================
+# INC-2024-002 — Model API Timeout Under Sustained Load
+# =============================================================================
+# Blameless: root cause is a SYSTEM GAP.
+# =============================================================================
+
+id: INC-2024-002
+title: "Model API timeout under sustained load causes partial outage"
+severity: SEV2
+root_cause_category: model_timeout
+date: "2024-11-22"
+
+detection_time: "2024-11-22T09:15:00Z"
+resolution_time: "2024-11-22T09:42:00Z"
+# MTTR = 27 minutes
+
+timeline:
+  - time: "09:10"
+    event: "Upstream model provider begins throttling at rate limit boundary"
+  - time: "09:15"
+    event: "Error rate alert fires, model API returning 429 responses"
+  - time: "09:18"
+    event: "Incident declared SEV2, commander assigned"
+  - time: "09:22"
+    event: "Retry logic amplifies load, retry budget not enforced"
+  - time: "09:28"
+    event: "Manual intervention: reduce concurrency via environment variable"
+  - time: "09:35"
+    event: "Model API recovers as request volume drops below rate limit"
+  - time: "09:42"
+    event: "Error rate and latency confirmed within SLO bounds for 5 minutes"
+
+root_cause: >
+  No retry budget enforcement on the model API path allowed retry storms
+  when the provider rate-limited requests. Exponential backoff was configured
+  but retry budget cap was missing, causing amplified load at high volume.
+
+evidence:
+  - type: metric
+    description: "Error rate exceeded 15 percent for model API route at 09:15"
+  - type: trace
+    description: "Trace ID ghi-456-jkl shows 3 retry attempts before timeout"
+  - type: log
+    description: "429 responses logged from model provider starting 09:10"
+
+action_items:
+  - id: AI-004
+    description: "Enforce retry budget with minimum request threshold before ratio cap"
+    owner: "platform-team"
+    due_date: "2024-12-01"
+    status: open
+    impact: 4
+    likelihood: 4
+    effort: 2
+    toil_category: cascading_failure_recovery
+
+  - id: AI-005
+    description: "Add model provider health check to readiness probe"
+    owner: "platform-team"
+    due_date: "2024-12-10"
+    status: open
+    impact: 3
+    likelihood: 3
+    effort: 1
+    toil_category: manual_scaling
+
+toil_hours:
+  cascading_failure_recovery: 2.0
+  manual_scaling: 1.5
+  alert_noise_triage: 0.5

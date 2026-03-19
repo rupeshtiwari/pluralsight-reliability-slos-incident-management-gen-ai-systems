@@ -1,0 +1,86 @@
+# =============================================================================
+# INC-2024-001 — Retrieval Cascade Causes Sustained Latency Breach
+# =============================================================================
+# Blameless: root cause is a SYSTEM GAP, not a person.
+# Timeline uses timestamps only — no individual names.
+# =============================================================================
+
+id: INC-2024-001
+title: "Retrieval cascade causes sustained latency breach"
+severity: SEV1
+root_cause_category: retrieval_cascade
+date: "2024-11-15"
+
+detection_time: "2024-11-15T14:03:00Z"
+resolution_time: "2024-11-15T14:47:00Z"
+# MTTR = 44 minutes
+
+timeline:
+  - time: "14:00"
+    event: "Vector database connection pool saturates under peak traffic"
+  - time: "14:03"
+    event: "SLO burn-rate alert fires on latency window"
+  - time: "14:07"
+    event: "Incident declared SEV1, commander assigned"
+  - time: "14:12"
+    event: "Traces confirm retrieval span P99 at 4200ms, cascading to model timeout"
+  - time: "14:20"
+    event: "Retrieval circuit breaker not present, requests continue hitting saturated path"
+  - time: "14:28"
+    event: "Manual mitigation: traffic shed to cached fallback via feature flag"
+  - time: "14:35"
+    event: "Vector DB pool recovered after traffic reduction"
+  - time: "14:42"
+    event: "Fallback disabled, live retrieval restored"
+  - time: "14:47"
+    event: "P99 latency and SLO signals confirmed within bounds for 5 minutes"
+
+root_cause: >
+  No circuit breaker on the retrieval path allowed cascading latency
+  when the vector database connection pool saturated under peak load.
+  Requests continued hitting the degraded path instead of failing fast
+  to cached fallback.
+
+evidence:
+  - type: metric
+    description: "SLO burn-rate alert fired at 14:03, 6x burn on 1h window"
+  - type: trace
+    description: "Trace ID abc-123-def shows retrieval span at 4200ms"
+  - type: log
+    description: "Vector DB connection pool exhaustion logged at 14:00"
+
+action_items:
+  - id: AI-001
+    description: "Add circuit breaker to retrieval path with cached fallback"
+    owner: "platform-team"
+    due_date: "2024-12-01"
+    status: open
+    impact: 5
+    likelihood: 4
+    effort: 2
+    toil_category: cascading_failure_recovery
+
+  - id: AI-002
+    description: "Add retrieval quality SLI to detect drift before user impact"
+    owner: "ml-ops-team"
+    due_date: "2024-12-15"
+    status: open
+    impact: 4
+    likelihood: 3
+    effort: 3
+    toil_category: alert_noise_triage
+
+  - id: AI-003
+    description: "Automate postmortem template generation from incident metadata"
+    owner: "sre-team"
+    due_date: "2025-01-15"
+    status: open
+    impact: 3
+    likelihood: 5
+    effort: 2
+    toil_category: manual_postmortem
+
+toil_hours:
+  cascading_failure_recovery: 3.5
+  alert_noise_triage: 1.0
+  manual_postmortem: 2.0

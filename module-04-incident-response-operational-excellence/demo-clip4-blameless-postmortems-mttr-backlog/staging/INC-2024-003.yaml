@@ -1,0 +1,74 @@
+# =============================================================================
+# INC-2024-003 — Retrieval Cascade During Index Rebalance
+# =============================================================================
+# Blameless: same root_cause_category as INC-2024-001.
+# Proves the pattern is recurring — the repeat incident trend panel
+# depends on multiple incidents in the same category.
+# =============================================================================
+
+id: INC-2024-003
+title: "Retrieval cascade during vector index rebalance"
+severity: SEV2
+root_cause_category: retrieval_cascade
+date: "2024-12-03"
+
+detection_time: "2024-12-03T16:20:00Z"
+resolution_time: "2024-12-03T16:52:00Z"
+# MTTR = 32 minutes
+
+timeline:
+  - time: "16:15"
+    event: "Scheduled vector index rebalance begins during business hours"
+  - time: "16:20"
+    event: "Retrieval latency alert fires, P99 exceeds 3000ms"
+  - time: "16:23"
+    event: "Incident declared SEV2, commander assigned"
+  - time: "16:28"
+    event: "Traces confirm retrieval spans timing out during rebalance IO"
+  - time: "16:30"
+    event: "Same failure path as INC-2024-001: no circuit breaker, requests queue"
+  - time: "16:38"
+    event: "Manual mitigation: pause rebalance job, retrieval recovers"
+  - time: "16:45"
+    event: "Latency returns within SLO bounds"
+  - time: "16:52"
+    event: "Stability confirmed for 5 minutes, incident resolved"
+
+root_cause: >
+  Vector index rebalance caused IO contention on the retrieval path.
+  The same missing circuit breaker from INC-2024-001 allowed requests
+  to queue behind the degraded path instead of failing fast to fallback.
+  Maintenance window was not enforced outside business hours.
+
+evidence:
+  - type: metric
+    description: "Retrieval P99 latency exceeded 3000ms starting 16:20"
+  - type: trace
+    description: "Trace ID mno-789-pqr shows retrieval span at 3400ms"
+  - type: log
+    description: "Vector index rebalance job started at 16:15, IO spike logged"
+
+action_items:
+  - id: AI-006
+    description: "Enforce maintenance windows outside peak traffic hours"
+    owner: "data-team"
+    due_date: "2024-12-15"
+    status: open
+    impact: 3
+    likelihood: 3
+    effort: 1
+    toil_category: manual_deploy
+
+  - id: AI-007
+    description: "Add circuit breaker to retrieval path (escalated from INC-001)"
+    owner: "platform-team"
+    due_date: "2024-12-08"
+    status: open
+    impact: 5
+    likelihood: 5
+    effort: 2
+    toil_category: cascading_failure_recovery
+
+toil_hours:
+  cascading_failure_recovery: 2.5
+  manual_deploy: 1.0

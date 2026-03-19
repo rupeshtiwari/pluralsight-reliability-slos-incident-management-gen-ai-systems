@@ -1,0 +1,33 @@
+# =============================================================================
+# Postmortem YAML Schema — Controlled Fields
+# =============================================================================
+# All enum-like fields are normalized. Free text is NOT permitted.
+# The exporter and scoring script validate against these values.
+# If a new category is needed, add it here FIRST.
+# =============================================================================
+
+severity:
+  allowed: [SEV1, SEV2, SEV3]
+
+root_cause_category:
+  allowed:
+    - retrieval_cascade
+    - model_timeout
+    - alert_noise
+    - manual_recovery
+    - deploy_regression
+
+toil_category:
+  allowed:
+    - cascading_failure_recovery
+    - alert_noise_triage
+    - manual_scaling
+    - manual_deploy
+    - manual_postmortem
+
+scoring:
+  impact:     { range: [1, 5], description: "User harm to latency, quality, or availability" }
+  likelihood: { range: [1, 5], description: "How often this occurs under normal and peak load" }
+  effort:     { range: [1, 5], description: "Engineering effort to implement the fix" }
+
+priority_formula: "impact + likelihood - effort"
